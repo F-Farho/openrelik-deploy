@@ -26,6 +26,36 @@ echo ""
 RELEASES=("0.7.0" "0.6.0")
 LATEST_RELEASE="0.7.0"
 
+# Resolves the actual filename to use for a given base name by checking if the exact file exists on GitHub. If not, it searches for an RC variant
+# (e.g. config_0.7.0-rc.1.env) and returns that instead.
+resolve_filename() {
+  local base_url="$1"
+  local filename="$2"
+
+  # Check if the exact file exists (HTTP 200)
+  if curl -s -o /dev/null -w "%{http_code}" "${base_url}/${filename}" | grep -q "^200$"; then
+    echo "${filename}"
+    return
+  fi
+
+  # Extract the stem and extension to search for RC variants
+  # e.g. "config_0.7.0.env" -> stem="config_0.7.0" ext=".env"
+  local stem="${filename%.*}"
+  local ext=".${filename##*.}"
+
+  # Try rc.1 through rc.9
+  for rc_num in $(seq 1 9); do
+    local rc_filename="${stem}-rc.${rc_num}${ext}"
+    if curl -s -o /dev/null -w "%{http_code}" "${base_url}/${rc_filename}" | grep -q "^200$"; then
+      echo "${rc_filename}"
+      return
+    fi
+  done
+
+  # No variant found, return original and let the download fail naturally
+  echo "${filename}"
+}
+
 # Prompt user to select version
 echo -e "\033[1;34m  Select a version to install:\033[0m"
 echo -e "    \033[1;37m1)\033[0m Latest release (${LATEST_RELEASE}) (recommended)"
