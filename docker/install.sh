@@ -31,15 +31,16 @@ LATEST_RELEASE="0.7.0"
 resolve_filename() {
   local base_url="$1"
   local filename="$2"
+  local http_code
 
   # Check if the exact file exists (HTTP 200)
-  if curl -s -o /dev/null -w "%{http_code}" "${base_url}/${filename}" | grep -q "^200$"; then
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" "${base_url}/${filename}")
+  if [[ "${http_code}" == "200" ]]; then
     echo "${filename}"
     return
   fi
 
   # Extract the stem and extension to search for RC variants
-  # e.g. "config_0.7.0.env" -> stem="config_0.7.0" ext=".env"
   local stem="${filename%.*}"
   local ext=".${filename##*.}"
 
